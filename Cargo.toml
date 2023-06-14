@@ -1,0 +1,17 @@
+[package]
+categories = ["embedded", "hardware-support", "no-std"]
+description = "A Rust implementation of the 1-Wire protocol"
+edition = "2021"
+keywords = ["1wire", "embedded", "embedded-hal-driver", "onewire"]
+name = "one_wire"
+readme = "README.md"
+version = "0.0.1"
+
+[dependencies]
+embedded-hal = "1.0.0-alpha.10"
+thiserror = { version = "1.0.38", package = "thiserror-core", default-features = false }
+
+[features]
+default = ["crc"]
+
+crc = []
