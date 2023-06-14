@@ -1,4 +1,4 @@
-use self::error::{Error, Result};
+pub use self::error::{Error, Result};
 
 /// Calculates the crc8 of the input data.
 pub fn crc8(data: &[u8]) -> u8 {
