@@ -1,12 +1,14 @@
 //! [1-Wire](https://www.maximintegrated.com/en/design/technical-documents/app-notes/1/126.html)
 
 #![no_std]
+#![feature(associated_type_defaults)]
 #![feature(error_in_core)]
 
-use self::standard::*;
-use core::convert::Infallible;
+pub use command::Command;
+
 use embedded_hal::delay::DelayUs;
 use embedded_hal::digital::{ErrorType, InputPin, OutputPin};
+use standard::*;
 
 /// Implementation of the 1-Wire protocol.
 /// 1 Wire
@@ -16,7 +18,17 @@ pub struct OneWire<T, U> {
     speed: Speed,
 }
 
-impl<T: Pin, U: DelayUs> OneWire<T, U> {
+impl<T: InputPin + ErrorType, U> OneWire<T, U> {
+    pub fn is_high(&self) -> Result<bool, T::Error> {
+        Ok(self.pin.is_high()?)
+    }
+
+    pub fn is_low(&self) -> Result<bool, T::Error> {
+        Ok(self.pin.is_low()?)
+    }
+}
+
+impl<T: OutputPin + ErrorType, U> OneWire<T, U> {
     pub fn new(pin: T, delay: U) -> Result<Self, T::Error> {
         let mut one_wire = Self {
             pin,
@@ -26,14 +38,6 @@ impl<T: Pin, U: DelayUs> OneWire<T, U> {
         // Pin should be high during idle.
         one_wire.set_high()?;
         Ok(one_wire)
-    }
-
-    pub fn is_high(&self) -> Result<bool, T::Error> {
-        Ok(self.pin.is_high()?)
-    }
-
-    pub fn is_low(&self) -> Result<bool, T::Error> {
-        Ok(self.pin.is_low()?)
     }
 
     /// Set the output as high.
@@ -47,14 +51,16 @@ impl<T: Pin, U: DelayUs> OneWire<T, U> {
     pub fn set_low(&mut self) -> Result<(), T::Error> {
         Ok(self.pin.set_low()?)
     }
+}
 
+impl<T, U: DelayUs> OneWire<T, U> {
     pub fn wait(&mut self, us: u32) {
         self.delay.delay_us(us);
     }
 }
 
 /// Bit (basic) operations
-impl<T: Pin, U: DelayUs> OneWire<T, U> {
+impl<T: InputPin + OutputPin + ErrorType, U: DelayUs> OneWire<T, U> {
     // Generate a 1-Wire reset, return true if no presence detect was found,
     // return false otherwise.
     pub fn reset(&mut self) -> Result<bool, T::Error> {
@@ -109,7 +115,7 @@ impl<T: Pin, U: DelayUs> OneWire<T, U> {
 }
 
 /// Byte operations
-impl<T: Pin, U: DelayUs> OneWire<T, U> {
+impl<T: InputPin + OutputPin + ErrorType, U: DelayUs> OneWire<T, U> {
     /// Read 1-Wire data byte.
     pub fn read_byte(&mut self) -> Result<u8, T::Error> {
         let mut byte = 0;
@@ -146,11 +152,6 @@ impl<T: Pin, U: DelayUs> OneWire<T, U> {
     }
 }
 
-/// Pin
-pub trait Pin: InputPin + OutputPin + ErrorType<Error = Infallible> {}
-
-impl<T: InputPin + OutputPin + ErrorType<Error = Infallible>> Pin for T {}
-
 /// Speed
 pub enum Speed {
     Standard,
@@ -183,5 +184,6 @@ mod overdrive {
     pub(super) const J: f32 = 40.0;
 }
 
+pub mod command;
 #[cfg(feature = "crc")]
 pub mod crc;
