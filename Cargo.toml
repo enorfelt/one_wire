@@ -5,13 +5,10 @@ edition = "2021"
 keywords = ["1wire", "embedded", "embedded-hal-driver", "onewire"]
 name = "one_wire"
 readme = "README.md"
-version = "0.0.3"
+version = "0.0.4"
 
 [dependencies]
+bitflags = "2.3.2"
 embedded-hal = "1.0.0-alpha.10"
+embedded-hal-async = "0.2.0-alpha.1"
 thiserror = { version = "1.0.38", package = "thiserror-core", default-features = false }
-
-[features]
-default = []
-
-crc = []

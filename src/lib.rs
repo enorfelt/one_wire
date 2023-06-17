@@ -1,17 +1,26 @@
+//! Implementation of the 1-Wire protocol.
+//!
 //! [1-Wire](https://www.maximintegrated.com/en/design/technical-documents/app-notes/1/126.html)
 
 #![no_std]
-#![feature(associated_type_defaults)]
+#![feature(decl_macro)]
+#![feature(default_free_fn)]
 #![feature(error_in_core)]
+#![feature(trait_alias)]
 
-pub use command::Command;
+pub use code::Code;
+pub use command::{Command, Commander};
+pub use error::{Error, Result};
 
-use embedded_hal::delay::DelayUs;
-use embedded_hal::digital::{ErrorType, InputPin, OutputPin};
+use embedded_hal::{
+    delay::DelayUs,
+    digital::{ErrorType, InputPin, OutputPin},
+};
+use embedded_hal_async::digital::Wait;
 use standard::*;
 
-/// Implementation of the 1-Wire protocol.
 /// 1 Wire
+#[derive(Clone, Copy, Debug, Default)]
 pub struct OneWire<T, U> {
     delay: U,
     pin: T,
@@ -89,14 +98,14 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayUs> OneWire<T, U> {
     /// Send a 1-Wire write bit. Provide 10us recovery time.
     pub fn write_bit(&mut self, bit: bool) -> Result<(), T::Error> {
         if bit {
-            self.write_1_bit()
+            self.write_bit_1()
         } else {
-            self.write_0_bit()
+            self.write_bit_0()
         }
     }
 
-    /// Write '1' bit.
-    pub fn write_0_bit(&mut self) -> Result<(), T::Error> {
+    /// Write '0' bit.
+    pub fn write_bit_0(&mut self) -> Result<(), T::Error> {
         self.set_low()?;
         self.wait(C);
         self.set_high()?;
@@ -104,8 +113,8 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayUs> OneWire<T, U> {
         Ok(())
     }
 
-    /// Write '0' bit.
-    pub fn write_1_bit(&mut self) -> Result<(), T::Error> {
+    /// Write '1' bit.
+    pub fn write_bit_1(&mut self) -> Result<(), T::Error> {
         self.set_low()?;
         self.wait(A);
         self.set_high()?;
@@ -153,7 +162,9 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayUs> OneWire<T, U> {
 }
 
 /// Speed
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Speed {
+    #[default]
     Standard,
     Overdrive,
 }
@@ -184,6 +195,9 @@ mod overdrive {
     pub(super) const J: f32 = 40.0;
 }
 
-pub mod command;
-#[cfg(feature = "crc")]
-pub mod crc;
+pub mod commands;
+pub mod crc8;
+
+mod code;
+mod command;
+mod error;
