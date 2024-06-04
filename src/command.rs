@@ -1,7 +1,7 @@
-use crate::OneWire;
+use crate::OneWireDriver;
 use core::convert::Infallible;
 use embedded_hal::{
-    delay::DelayUs,
+    delay::DelayNs,
     digital::{ErrorType, InputPin, OutputPin},
 };
 
@@ -10,8 +10,8 @@ pub trait Commander {
     fn run<C: Command>(&mut self, command: C) -> C::Output;
 }
 
-impl<T: InputPin + OutputPin + ErrorType<Error = Infallible>, U: DelayUs> Commander
-    for OneWire<T, U>
+impl<T: InputPin + OutputPin + ErrorType<Error = Infallible>, U: DelayNs> Commander
+    for OneWireDriver<T, U>
 {
     fn run<C: Command>(&mut self, command: C) -> C::Output {
         command.execute(self)
@@ -24,9 +24,9 @@ pub trait Command {
 
     fn execute(
         &self,
-        one_wire: &mut OneWire<
+        driver: &mut OneWireDriver<
             impl InputPin + OutputPin + ErrorType<Error = Infallible>,
-            impl DelayUs,
+            impl DelayNs,
         >,
     ) -> Self::Output;
 }

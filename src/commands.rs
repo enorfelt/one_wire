@@ -1,7 +1,7 @@
-use crate::{crc8::check, Code, Command, Error, OneWire, Result};
-use core::{convert::Infallible, default::default};
+use crate::{crc8::check, Command, Error, OneWireDriver, Result, Rom};
+use core::convert::Infallible;
 use embedded_hal::{
-    delay::DelayUs,
+    delay::DelayNs,
     digital::{ErrorType, InputPin, OutputPin},
 };
 
@@ -45,15 +45,15 @@ pub struct Read;
 /// same time (open drain will produce a wired AND result).
 #[derive(Clone, Copy, Debug)]
 pub struct Match {
-    pub code: Code,
+    pub rom: Rom,
 }
 
 impl Command for Match {
     type Output = Result<(), Infallible>;
 
-    fn execute(&self, one_wire: &mut OneWire<impl Pin, impl DelayUs>) -> Self::Output {
-        one_wire.write_byte(COMMAND_ROM_MATCH)?;
-        one_wire.write_bytes(&Into::<[u8; 8]>::into(self.code))?;
+    fn execute(&self, driver: &mut OneWireDriver<impl Pin, impl DelayNs>) -> Self::Output {
+        driver.write_byte(COMMAND_ROM_MATCH)?;
+        driver.write_bytes(&Into::<[u8; 8]>::into(self.rom))?;
         Ok(())
     }
 }
@@ -72,8 +72,8 @@ pub struct Skip;
 impl Command for Skip {
     type Output = Result<(), Infallible>;
 
-    fn execute(&self, one_wire: &mut OneWire<impl Pin, impl DelayUs>) -> Self::Output {
-        one_wire.write_byte(COMMAND_ROM_SKIP)?;
+    fn execute(&self, driver: &mut OneWireDriver<impl Pin, impl DelayNs>) -> Self::Output {
+        driver.write_byte(COMMAND_ROM_SKIP)?;
         Ok(())
     }
 }
@@ -92,17 +92,17 @@ pub struct Search {
 }
 
 impl Command for Search {
-    type Output = Result<Code>;
+    type Output = Result<Rom>;
 
-    fn execute(&self, one_wire: &mut OneWire<impl Pin, impl DelayUs>) -> Self::Output {
-        if !one_wire.reset()? {
+    fn execute(&self, driver: &mut OneWireDriver<impl Pin, impl DelayNs>) -> Self::Output {
+        if !driver.reset()? {
             return Err(Error::NoAttachedDevices);
         }
-        one_wire.write_byte(COMMAND_ROM_SEARCH)?;
-        let mut code = 0;
+        driver.write_byte(COMMAND_ROM_SEARCH)?;
+        let mut rom = 0;
         for index in 0..u64::BITS {
             let mask = 1u64 << index;
-            match (one_wire.read_bit()?, one_wire.read_bit()?) {
+            match (driver.read_bit()?, driver.read_bit()?) {
                 // `0b00`: There are still devices attached which have
                 // conflicting bits in this position.
                 CONFLICT => {
@@ -110,35 +110,35 @@ impl Command for Search {
                     // discrepancies |= mask;
                     // state.index = index;
                     if self.conflicts & mask == 0 {
-                        code &= !mask;
-                        one_wire.write_bit_0()?;
+                        rom &= !mask;
+                        driver.write_bit_0()?;
                     } else {
-                        code |= mask;
-                        one_wire.write_bit_1()?;
+                        rom |= mask;
+                        driver.write_bit_1()?;
                     }
                 }
                 // `0b01`: All devices still coupled have a 0-bit in this bit
                 // position.
                 ZERO => {
-                    code |= mask;
-                    one_wire.write_bit_0()?;
+                    rom |= mask;
+                    driver.write_bit_0()?;
                 }
                 // `0b10`: All devices still coupled have a 1-bit in this bit
                 // position.
                 ONE => {
-                    code &= !mask;
-                    one_wire.write_bit_1()?;
+                    rom &= !mask;
+                    driver.write_bit_1()?;
                 }
                 // `0b11`: There are no devices attached to the 1-Wire bus.
                 NONE => return Err(Error::NoAttachedDevices),
             }
         }
-        code.try_into()
+        rom.try_into()
     }
 }
 
 impl Search {
-    fn search(&mut self, one_wire: &mut OneWire<impl Pin, impl DelayUs>) -> Result<Code> {
+    fn search(&mut self, one_wire: &mut OneWireDriver<impl Pin, impl DelayNs>) -> Result<Rom> {
         if !one_wire.reset()? {
             return Err(Error::NoAttachedDevices);
         }
@@ -186,13 +186,13 @@ impl Search {
 }
 
 pub struct Iter<'a, T, U> {
-    one_wire: &'a mut OneWire<T, U>,
+    driver: &'a mut OneWireDriver<T, U>,
     discrepancies: u64,
     index: u8,
 }
 
 impl<T, U> Iterator for Iter<'_, T, U> {
-    type Item = Result<Code>;
+    type Item = Result<Rom>;
 
     fn next(&mut self) -> Option<Self::Item> {
         None

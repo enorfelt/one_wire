@@ -4,40 +4,38 @@
 
 #![no_std]
 #![feature(decl_macro)]
-#![feature(default_free_fn)]
 #![feature(error_in_core)]
 #![feature(trait_alias)]
 
-pub use code::Code;
+pub use rom::Rom;
 pub use command::{Command, Commander};
 pub use error::{Error, Result};
 
 use embedded_hal::{
-    delay::DelayUs,
+    delay::DelayNs,
     digital::{ErrorType, InputPin, OutputPin},
 };
-use embedded_hal_async::digital::Wait;
 use standard::*;
 
-/// 1 Wire
+/// 1 Wire driver
 #[derive(Clone, Copy, Debug, Default)]
-pub struct OneWire<T, U> {
-    delay: U,
+pub struct OneWireDriver<T, U> {
     pin: T,
+    delay: U,
     speed: Speed,
 }
 
-impl<T: InputPin + ErrorType, U> OneWire<T, U> {
-    pub fn is_high(&self) -> Result<bool, T::Error> {
+impl<T: InputPin + ErrorType, U> OneWireDriver<T, U> {
+    pub fn is_high(&mut self) -> Result<bool, T::Error> {
         Ok(self.pin.is_high()?)
     }
 
-    pub fn is_low(&self) -> Result<bool, T::Error> {
+    pub fn is_low(&mut self) -> Result<bool, T::Error> {
         Ok(self.pin.is_low()?)
     }
 }
 
-impl<T: OutputPin + ErrorType, U> OneWire<T, U> {
+impl<T: OutputPin + ErrorType, U> OneWireDriver<T, U> {
     pub fn new(pin: T, delay: U) -> Result<Self, T::Error> {
         let mut one_wire = Self {
             pin,
@@ -62,14 +60,14 @@ impl<T: OutputPin + ErrorType, U> OneWire<T, U> {
     }
 }
 
-impl<T, U: DelayUs> OneWire<T, U> {
+impl<T, U: DelayNs> OneWireDriver<T, U> {
     pub fn wait(&mut self, us: u32) {
         self.delay.delay_us(us);
     }
 }
 
 /// Bit (basic) operations
-impl<T: InputPin + OutputPin + ErrorType, U: DelayUs> OneWire<T, U> {
+impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> OneWireDriver<T, U> {
     // Generate a 1-Wire reset, return true if no presence detect was found,
     // return false otherwise.
     pub fn reset(&mut self) -> Result<bool, T::Error> {
@@ -124,7 +122,7 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayUs> OneWire<T, U> {
 }
 
 /// Byte operations
-impl<T: InputPin + OutputPin + ErrorType, U: DelayUs> OneWire<T, U> {
+impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> OneWireDriver<T, U> {
     /// Read 1-Wire data byte.
     pub fn read_byte(&mut self) -> Result<u8, T::Error> {
         let mut byte = 0;
@@ -198,6 +196,6 @@ mod overdrive {
 pub mod commands;
 pub mod crc8;
 
-mod code;
+mod rom;
 mod command;
 mod error;
