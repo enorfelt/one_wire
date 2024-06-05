@@ -7,15 +7,38 @@
 #![feature(error_in_core)]
 #![feature(trait_alias)]
 
-pub use rom::Rom;
 pub use command::{Command, Commander};
 pub use error::{Error, Result};
+pub use rom::Rom;
 
 use embedded_hal::{
     delay::DelayNs,
     digital::{ErrorType, InputPin, OutputPin},
 };
 use standard::*;
+
+pub const FAMILY_CODE: u8 = 0x28;
+
+/// Ds18b20
+pub struct Ds18b20 {
+    rom: Rom,
+}
+
+impl Ds18b20 {
+    /// Checks that the given code contains the correct family code, reads
+    /// configuration data, then returns a device
+    pub fn new(rom: Rom) -> Result<Ds18b20> {
+        match rom.family_code {
+            FAMILY_CODE => Ok(Self { rom }),
+            _ => Err(Error::MismatchedFamilyCode),
+        }
+    }
+
+    /// Returns the device rom
+    pub fn rom(&self) -> &Rom {
+        &self.rom
+    }
+}
 
 /// 1 Wire driver
 #[derive(Clone, Copy, Debug, Default)]
@@ -95,28 +118,10 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> OneWireDriver<T, U> {
 
     /// Send a 1-Wire write bit. Provide 10us recovery time.
     pub fn write_bit(&mut self, bit: bool) -> Result<(), T::Error> {
-        if bit {
-            self.write_bit_1()
-        } else {
-            self.write_bit_0()
-        }
-    }
-
-    /// Write '0' bit.
-    pub fn write_bit_0(&mut self) -> Result<(), T::Error> {
         self.set_low()?;
-        self.wait(C);
+        self.wait(if bit { A } else { C });
         self.set_high()?;
-        self.wait(D);
-        Ok(())
-    }
-
-    /// Write '1' bit.
-    pub fn write_bit_1(&mut self) -> Result<(), T::Error> {
-        self.set_low()?;
-        self.wait(A);
-        self.set_high()?;
-        self.wait(B);
+        self.wait(if bit { B } else { D });
         Ok(())
     }
 }
@@ -196,6 +201,7 @@ mod overdrive {
 pub mod commands;
 pub mod crc8;
 
-mod rom;
 mod command;
 mod error;
+mod rom;
+mod scratchpad;

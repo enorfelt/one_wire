@@ -13,8 +13,12 @@ pub enum Error {
     NotHigh,
     #[error("pin")]
     Pin(#[from] Infallible),
+    #[error("family code mismatch")]
+    MismatchedFamilyCode,
     #[error("there are no devices attached to the 1-Wire bus")]
     NoAttachedDevices,
     #[error("CRC mismatch {{ crc8={crc8} }}")]
     MismatchedCrc { crc8: u8 },
+    #[error("timeout expired")]
+    Timeout,
 }

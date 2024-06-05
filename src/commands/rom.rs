@@ -1,9 +1,7 @@
+use super::Pin;
 use crate::{crc8::check, Command, Error, OneWireDriver, Result, Rom};
 use core::convert::Infallible;
-use embedded_hal::{
-    delay::DelayNs,
-    digital::{ErrorType, InputPin, OutputPin},
-};
+use embedded_hal::delay::DelayNs;
 
 pub const COMMAND_ALARM_SEARCH: u8 = 0xEC;
 pub const COMMAND_ROM_READ: u8 = 0x33;
@@ -15,9 +13,6 @@ const CONFLICT: (bool, bool) = (false, false);
 const ZERO: (bool, bool) = (false, true);
 const ONE: (bool, bool) = (true, false);
 const NONE: (bool, bool) = (true, true);
-
-/// Alias for `InputPin` + `OutputPin` + `ErrorType`.
-pub trait Pin = InputPin + OutputPin + ErrorType<Error = Infallible>;
 
 /// Alarm search command
 ///
@@ -34,7 +29,7 @@ pub struct AlarmSearch;
 /// ROM function commands. All ROM function commands are 8 bits long. A list of
 /// these commands follows (refer to flowchart in Figure 5):
 #[derive(Clone, Copy, Debug)]
-pub struct Read;
+pub struct RomRead;
 
 /// Match ROM command
 ///
@@ -44,11 +39,11 @@ pub struct Read;
 /// the bus, a data collision will occur when all slaves try to transmit at the
 /// same time (open drain will produce a wired AND result).
 #[derive(Clone, Copy, Debug)]
-pub struct Match {
+pub struct RomMatch {
     pub rom: Rom,
 }
 
-impl Command for Match {
+impl Command for RomMatch {
     type Output = Result<(), Infallible>;
 
     fn execute(&self, driver: &mut OneWireDriver<impl Pin, impl DelayNs>) -> Self::Output {
@@ -67,9 +62,9 @@ impl Command for Match {
 /// sequence will wait for a reset pulse. This command can be used with a single
 /// or multiple devices on the bus.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct Skip;
+pub struct RomSkip;
 
-impl Command for Skip {
+impl Command for RomSkip {
     type Output = Result<(), Infallible>;
 
     fn execute(&self, driver: &mut OneWireDriver<impl Pin, impl DelayNs>) -> Self::Output {
@@ -87,11 +82,11 @@ impl Command for Skip {
 /// multiple slaves transmit simultaneously (open drain pulldowns will produce a
 /// wired AND result).
 #[derive(Clone, Copy, Debug, Default)]
-pub struct Search {
+pub struct RomSearch {
     conflicts: u64,
 }
 
-impl Command for Search {
+impl Command for RomSearch {
     type Output = Result<Rom>;
 
     fn execute(&self, driver: &mut OneWireDriver<impl Pin, impl DelayNs>) -> Self::Output {
@@ -111,23 +106,23 @@ impl Command for Search {
                     // state.index = index;
                     if self.conflicts & mask == 0 {
                         rom &= !mask;
-                        driver.write_bit_0()?;
+                        driver.write_bit(false)?;
                     } else {
                         rom |= mask;
-                        driver.write_bit_1()?;
+                        driver.write_bit(true)?;
                     }
                 }
                 // `0b01`: All devices still coupled have a 0-bit in this bit
                 // position.
                 ZERO => {
                     rom |= mask;
-                    driver.write_bit_0()?;
+                    driver.write_bit(false)?;
                 }
                 // `0b10`: All devices still coupled have a 1-bit in this bit
                 // position.
                 ONE => {
                     rom &= !mask;
-                    driver.write_bit_1()?;
+                    driver.write_bit(true)?;
                 }
                 // `0b11`: There are no devices attached to the 1-Wire bus.
                 NONE => return Err(Error::NoAttachedDevices),
@@ -137,7 +132,7 @@ impl Command for Search {
     }
 }
 
-impl Search {
+impl RomSearch {
     fn search(&mut self, one_wire: &mut OneWireDriver<impl Pin, impl DelayNs>) -> Result<Rom> {
         if !one_wire.reset()? {
             return Err(Error::NoAttachedDevices);
@@ -158,24 +153,24 @@ impl Search {
                     if self.conflicts ^ mask == 0 {
                         self.conflicts |= mask;
                         code &= !mask;
-                        one_wire.write_bit_0()?;
+                        one_wire.write_bit(false)?;
                     } else {
                         self.conflicts &= !mask;
                         code |= mask;
-                        one_wire.write_bit_1()?
+                        one_wire.write_bit(true)?
                     }
                 }
                 // `0b01`: All devices still coupled have a 0-bit in this bit
                 // position.
                 ZERO => {
                     code |= mask;
-                    one_wire.write_bit_0()?;
+                    one_wire.write_bit(false)?;
                 }
                 // `0b10`: All devices still coupled have a 1-bit in this bit
                 // position.
                 ONE => {
                     code &= !mask;
-                    one_wire.write_bit_1()?;
+                    one_wire.write_bit(true)?;
                 }
                 // `0b11`: There are no devices attached to the 1-Wire bus.
                 NONE => return Err(Error::NoAttachedDevices),
