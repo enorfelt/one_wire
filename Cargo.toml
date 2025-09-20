@@ -11,4 +11,3 @@ version = "0.0.4"
 bitflags = "2.5.0"
 embedded-hal = "1.0.0"
 embedded-hal-async = "1.0.0"
-thiserror = { version = "1.0.50", package = "thiserror-core", default-features = false }
