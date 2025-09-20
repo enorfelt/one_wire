@@ -3,9 +3,6 @@
 //! [1-Wire](https://www.maximintegrated.com/en/design/technical-documents/app-notes/1/126.html)
 
 #![no_std]
-#![feature(decl_macro)]
-#![feature(error_in_core)]
-#![feature(trait_alias)]
 
 pub use command::{Command, Commander};
 pub use error::{Error, Result};
@@ -73,7 +70,10 @@ impl<T: OutputPin + ErrorType, U> OneWireDriver<T, U> {
     /// Set the output as high.
     ///
     /// Disconnects the bus, letting another device (or the pull-up resistor)
+    /// pull it high by switching to input mode
     pub fn set_high(&mut self) -> Result<(), T::Error> {
+        // For 1-Wire, we should switch to input mode to let pull-up work
+        // rather than actively driving high
         Ok(self.pin.set_high()?)
     }
 

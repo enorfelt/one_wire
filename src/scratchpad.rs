@@ -112,7 +112,7 @@ fn temperature(lsb: u8, msb: u8, resolution: Resolution) -> f32 {
         Resolution::Eleven => 8.0,
         Resolution::Twelve => 16.0,
     };
-    i16::from_be_bytes([lsb, msb]) as f32 / divider
+    i16::from_le_bytes([lsb, msb]) as f32 / divider
 }
 
 #[test]
