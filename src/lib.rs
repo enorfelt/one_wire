@@ -200,6 +200,7 @@ mod overdrive {
 
 pub mod commands;
 pub mod crc8;
+pub mod temp;
 
 mod command;
 mod error;

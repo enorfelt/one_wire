@@ -3,7 +3,7 @@ pub use self::{
         MemoryConvert, MemoryPowerSupplyRead, MemoryRecall, MemoryScratchpadCopy,
         MemoryScratchpadRead, MemoryScratchpadWrite,
     },
-    rom::{AlarmSearch, RomMatch, RomRead, RomSearch, RomSkip},
+    rom::{AlarmSearch, RomMatch, RomRead, RomSearch, RomSkip, COMMAND_ALARM_SEARCH, COMMAND_ROM_SEARCH},
 };
 
 use core::convert::Infallible;

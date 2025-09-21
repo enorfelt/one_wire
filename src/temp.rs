@@ -1,4 +1,12 @@
-impl<T: Pin, U: DelayUs> OneWire<T, U> {
+use embedded_hal::delay::DelayNs;
+
+use crate::commands::Pin;
+pub use crate::commands::{COMMAND_ALARM_SEARCH, COMMAND_ROM_SEARCH};
+pub use crate::error::{Error, Result};
+
+use crate::{crc8, OneWireDriver};
+
+impl<T: Pin, U: DelayNs> OneWireDriver<T, U> {
     pub fn into_inner(self) -> T {
         self.pin
     }
@@ -134,7 +142,7 @@ impl<T: Pin, U: DelayUs> OneWire<T, U> {
             }
             self.write_bit(chosen_bit)?;
         }
-        crc::check_crc8(&address.to_le_bytes())?;
+        crc8::check(&address.to_le_bytes())?;
         Ok(Some((
             Address(address),
             SearchState {
@@ -147,17 +155,17 @@ impl<T: Pin, U: DelayUs> OneWire<T, U> {
 }
 
 /// Devices
-pub struct Devices<'a, T, D> {
-    one_wire: &'a mut OneWire<T, D>,
+pub struct Devices<'a, T, U> {
+    one_wire: &'a mut OneWireDriver<T, U>,
     state: Option<SearchState>,
     finished: bool,
     only_alarming: bool,
 }
 
-impl<'a, T, D> Iterator for Devices<'a, T, D>
+impl<'a, T, U> Iterator for Devices<'a, T, U>
 where
     T: Pin,
-    D: DelayUs,
+    U: DelayNs,
 {
     type Item = Result<Address>;
 
@@ -184,6 +192,22 @@ where
                 Some(Err(err))
             }
         }
+    }
+}
+
+pub struct Address(pub u64);
+
+impl Address {
+    pub fn to_le_bytes(&self) -> [u8; 8] {
+        self.0.to_le_bytes()
+    }
+
+    pub fn to_be_bytes(&self) -> [u8; 8] {
+        self.0.to_be_bytes()
+    }
+
+    pub fn from_le_bytes(bytes: [u8; 8]) -> Self {
+        Self(u64::from_le_bytes(bytes))
     }
 }
 
