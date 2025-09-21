@@ -14,6 +14,7 @@ pub enum Error {
     NoAttachedDevices,
     MismatchedCrc { crc8: u8 },
     Timeout,
+    UnexpectedResponse,
 }
 
 impl fmt::Display for Error {
@@ -26,6 +27,7 @@ impl fmt::Display for Error {
             Error::NoAttachedDevices => write!(f, "there are no devices attached to the 1-Wire bus"),
             Error::MismatchedCrc { crc8 } => write!(f, "CRC mismatch {{ crc8={} }}", crc8),
             Error::Timeout => write!(f, "timeout expired"),
+            Error::UnexpectedResponse => write!(f, "unexpected response"),
         }
     }
 }
