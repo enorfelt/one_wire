@@ -29,7 +29,7 @@ impl<T: Pin, U: DelayNs> OneWireDriver<T, U> {
     /// are added / removed / change alarm state, the search may return an error
     /// or fail to find a device Device addresses will always be returned in the
     /// same order (lowest to highest, Little Endian)
-    pub fn devices(&mut self, only_alarming: bool) -> Devices<T, U> {
+    pub fn devices(&mut self, only_alarming: bool) -> Devices<'_, T, U> {
         Devices {
             one_wire: self,
             state: None,
